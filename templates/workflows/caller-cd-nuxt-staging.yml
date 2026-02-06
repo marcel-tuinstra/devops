@@ -1,0 +1,20 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    uses: marcel-tuinstra/devops/.github/workflows/reusable-cd-nuxt-ssg.yml@v1
+    with:
+      service-name: web
+      image-name: ghcr.io/marcel-tuinstra/site-marcel
+      health-url: https://staging.example.com/health
+      environment: staging
+      remote-path: /srv/site-marcel
+      ssh-user: deploy
+      ssh-host: staging.example.com
+    secrets:
+      ssh-private-key: ${{ secrets.SSH_STAGING_PRIVATE_KEY }}
