@@ -1,0 +1,13 @@
+name: Example caller for reusable CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  ci:
+    uses: marcel-tuinstra/devops/.github/workflows/reusable-ci.yml@v1
+    with:
+      node-version: "20"
+      workdir: "."
+      test-command: npm test
