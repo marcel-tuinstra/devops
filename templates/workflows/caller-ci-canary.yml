@@ -1,0 +1,12 @@
+name: CI (canary channel example)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ci:
+    uses: marcel-tuinstra/devops/.github/workflows/reusable-ci.yml@main
+    with:
+      node-version: "20"
+      workdir: "."
+      test-command: npm test

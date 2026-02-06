@@ -39,3 +39,8 @@ An example caller exists at `.github/workflows/example-caller.yml`.
 
 Pipeline and deployment control requirements are documented in
 `docs/security/pipeline-security-policy.md`.
+
+## Workflow Versioning
+
+Reusable workflow release channels, deprecation rules, and migration guidance are
+documented in `docs/workflows/versioning-policy.md`.
