@@ -34,3 +34,8 @@ Auth0 is the accepted central identity provider for the DevOps platform and down
 ## Reusable Workflow Example
 
 An example caller exists at `.github/workflows/example-caller.yml`.
+
+## Security Governance
+
+Pipeline and deployment control requirements are documented in
+`docs/security/pipeline-security-policy.md`.
