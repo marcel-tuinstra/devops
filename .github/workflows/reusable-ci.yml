@@ -16,7 +16,7 @@ on:
       test-command:
         description: Command used to run tests
         required: false
-        default: npm test
+        default: ""
         type: string
 
 jobs:
@@ -49,4 +49,5 @@ jobs:
         run: npm run build --if-present
 
       - name: Test
+        if: ${{ inputs['test-command'] != '' }}
         run: ${{ inputs['test-command'] }}

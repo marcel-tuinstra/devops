@@ -34,3 +34,22 @@ Auth0 is the accepted central identity provider for the DevOps platform and down
 ## Reusable Workflow Example
 
 An example caller exists at `.github/workflows/example-caller.yml`.
+A Nuxt-focused reusable CI guide is available at `docs/workflows/reusable-ci-nuxt.md`.
+
+## Security Governance
+
+Pipeline and deployment control requirements are documented in
+`docs/security/pipeline-security-policy.md`.
+
+## Workflow Versioning
+
+Reusable workflow release channels, deprecation rules, and migration guidance are
+documented in `docs/workflows/versioning-policy.md`.
+
+## Deployment Automation
+
+Shared deployment script documentation is available at
+`docs/scripts/deploy-service.md`.
+
+Reusable Nuxt SSG CD workflow documentation is available at
+`docs/workflows/reusable-cd-nuxt-ssg.md`.
