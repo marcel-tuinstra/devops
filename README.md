@@ -50,3 +50,6 @@ documented in `docs/workflows/versioning-policy.md`.
 
 Shared deployment script documentation is available at
 `docs/scripts/deploy-service.md`.
+
+Reusable Nuxt SSG CD workflow documentation is available at
+`docs/workflows/reusable-cd-nuxt-ssg.md`.
