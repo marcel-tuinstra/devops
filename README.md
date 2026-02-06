@@ -13,7 +13,7 @@ The repository is organized around reusable platform assets:
 
 ## Auth and Identity Direction
 
-Auth0 is the central identity provider direction for the DevOps platform and downstream project integrations (AirportToday and Subtrack). See `docs/adr/2026-02-auth0-central-idp.md` for details and follow-up links.
+Auth0 is the accepted central identity provider for the DevOps platform and downstream project integrations (AirportToday and Subtrack). See `docs/adr/2026-02-auth0-central-idp.md` for rationale, guardrails, and tenant strategy under Epic SC-200.
 
 ## Onboarding
 
