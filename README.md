@@ -44,3 +44,8 @@ Pipeline and deployment control requirements are documented in
 
 Reusable workflow release channels, deprecation rules, and migration guidance are
 documented in `docs/workflows/versioning-policy.md`.
+
+## Deployment Automation
+
+Shared deployment script documentation is available at
+`docs/scripts/deploy-service.md`.
