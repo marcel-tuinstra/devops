@@ -3,24 +3,31 @@
 # and replace <YOUR-...> placeholders with actual values.
 #
 # Required GitHub configuration in the consumer repo:
-#   Environment: production (with required reviewers recommended)
+#   Environment: production
 #   Secrets:     SSH_PRIVATE_KEY (environment-level)
 #   Variables:   SSH_HOST (environment-level)
 
 name: Deploy Production
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   deploy:
     uses: marcel-tuinstra/devops/.github/workflows/reusable-cd-nuxt-ssg.yml@v1
     secrets: inherit
     with:
-      service-name: <YOUR-SERVICE-NAME>           # e.g. web
+      service-name: <YOUR-SERVICE-NAME>           # e.g. site-marcel
       image-name: ghcr.io/<YOUR-ORG>/<YOUR-REPO>  # e.g. ghcr.io/marcel-tuinstra/site-marcel
       health-url: <YOUR-PRODUCTION-HEALTH-URL>     # e.g. https://example.com/health
       environment: production
-      remote-path: <YOUR-REMOTE-PATH>              # e.g. /srv/site-marcel
-      ssh-user: deploy
+      remote-path: <YOUR-REMOTE-PATH>/production   # e.g. /mnt/ssd1000-01/projects/site-marcel/production
+      ssh-user: <YOUR-SSH-USER>                    # e.g. mtuinstra
       dockerfile: Dockerfile
+      compose-file: docker-compose.production.yml  # production compose file in consumer repo root

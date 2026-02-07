@@ -31,15 +31,14 @@ Adjust the build command and output path to match your project.
 
 ## 2. Health Endpoint
 
-Ensure your application serves a health endpoint (e.g. `/health`) that returns HTTP 200.
-For static sites behind nginx, a simple static file or nginx location block works:
+Ensure your application serves a health endpoint at `/health` that returns HTTP 200.
+For Nuxt SSG sites behind nginx, create a static file at `public/health` containing `ok`:
 
-```nginx
-location = /health {
-    return 200 'ok';
-    add_header Content-Type text/plain;
-}
 ```
+ok
+```
+
+This gets included in the generated output and served by nginx automatically — no extra configuration needed.
 
 ## 3. GitHub Environments
 
@@ -47,8 +46,8 @@ Create two GitHub Environments in your consumer repo settings:
 
 | Environment | Purpose |
 |---|---|
-| `staging` | Auto-deploys on push to `main` |
-| `production` | Manual deploy via `workflow_dispatch` (add required reviewers) |
+| `staging` | Auto-deploys on push to `develop` |
+| `production` | Auto-deploys on push to `main` |
 
 ## 4. Secrets and Variables (Environment-level)
 
@@ -100,20 +99,53 @@ jobs:
     uses: marcel-tuinstra/devops/.github/workflows/reusable-ci.yml@v1
 ```
 
-## 6. Compose File
+## 6. Compose Files
 
-Add a `docker-compose.yml` to your consumer repo root. Use `templates/compose/service-compose.yml` as a starting point:
+Add **two** compose files to your consumer repo root — one per environment:
 
+**`docker-compose.staging.yml`** (staging port):
 ```yaml
 services:
-  app:
-    image: ghcr.io/example/app:latest
-    restart: unless-stopped
+  <service-name>:
+    image: ghcr.io/<org>/<repo>:latest
     ports:
-      - "8080:80"
+      - "<staging-port>:80"
+    restart: unless-stopped
 ```
 
-The CD workflow automatically uploads this file to the server at `remote-path` before deploying. You do **not** need to manually place it on the server.
+**`docker-compose.production.yml`** (production port):
+```yaml
+services:
+  <service-name>:
+    image: ghcr.io/<org>/<repo>:latest
+    ports:
+      - "<production-port>:80"
+    restart: unless-stopped
+```
+
+### Port Schema
+
+Each project gets a pair of ports. Production ports start at 3000, staging at 3100:
+
+| Project | Production | Staging |
+|---|---|---|
+| site-marcel | 3000 | 3100 |
+| site-subtrack | 3001 | 3101 |
+| airporttoday-nuxt | 3002 | 3102 |
+
+The CD workflow automatically uploads the appropriate compose file to the server at `remote-path` before deploying. You do **not** need to manually place it on the server.
+
+### Directory Structure on Server
+
+Each environment deploys to its own subdirectory:
+
+```
+/mnt/ssd1000-01/projects/<project>/
+├── staging/
+│   └── docker-compose.staging.yml
+└── production/
+    └── docker-compose.production.yml
+```
 
 ## 7. Server Preparation
 
@@ -124,16 +156,35 @@ On each target server:
 3. Install Docker and Docker Compose
 4. Ensure the deploy user can write to the `remote-path` directory (the workflow creates it via `mkdir -p` if it doesn't exist)
 
-## 8. Validation
+## 8. Branching Strategy
+
+Use a two-branch model:
+
+| Branch | Deploys to | Trigger |
+|---|---|---|
+| `develop` | Staging | Push |
+| `main` | Production | Push |
+
+Typical flow: work on feature branches, merge to `develop` for staging verification, then merge `develop` into `main` for production.
+
+## 9. DNS and Reverse Proxy
+
+- **DNS**: Add a wildcard A-record `*.<your-domain>` pointing to your server.
+- **Staging URL**: `staging.<your-domain>` (e.g. `staging.marcel.tuinstra.dev`)
+- **Production URL**: `<your-domain>` (e.g. `marcel.tuinstra.dev`)
+- **Reverse proxy**: Configure Nginx Proxy Manager (or similar) to proxy each hostname to the corresponding local port with SSL.
+
+## 10. Validation
 
 After setup, verify end-to-end:
 
 1. **CI**: Open a PR and confirm the reusable CI workflow runs and passes.
-2. **Staging CD**: Merge to `main` and confirm staging deployment succeeds.
-3. **Health check**: Verify the health URL returns HTTP 200.
-4. **Production CD**: Trigger a manual `workflow_dispatch` deploy and verify production.
+2. **Staging CD**: Push to `develop` and confirm staging deployment succeeds.
+3. **Health check**: Verify the staging health URL returns HTTP 200.
+4. **Production CD**: Push to `main` and confirm production deployment succeeds.
+5. **Health check**: Verify the production health URL returns HTTP 200.
 
-## 9. Rollback
+## 11. Rollback
 
 If a deployment fails:
 

@@ -12,17 +12,22 @@ name: Deploy Staging
 on:
   push:
     branches:
-      - main
+      - develop
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   deploy:
     uses: marcel-tuinstra/devops/.github/workflows/reusable-cd-nuxt-ssg.yml@v1
     secrets: inherit
     with:
-      service-name: <YOUR-SERVICE-NAME>           # e.g. web
+      service-name: <YOUR-SERVICE-NAME>           # e.g. site-marcel
       image-name: ghcr.io/<YOUR-ORG>/<YOUR-REPO>  # e.g. ghcr.io/marcel-tuinstra/site-marcel
       health-url: <YOUR-STAGING-HEALTH-URL>        # e.g. https://staging.example.com/health
       environment: staging
-      remote-path: <YOUR-REMOTE-PATH>              # e.g. /srv/site-marcel
-      ssh-user: deploy
+      remote-path: <YOUR-REMOTE-PATH>/staging      # e.g. /mnt/ssd1000-01/projects/site-marcel/staging
+      ssh-user: <YOUR-SSH-USER>                    # e.g. mtuinstra
       dockerfile: Dockerfile
+      compose-file: docker-compose.staging.yml     # staging compose file in consumer repo root
