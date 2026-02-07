@@ -100,17 +100,31 @@ jobs:
     uses: marcel-tuinstra/devops/.github/workflows/reusable-ci.yml@v1
 ```
 
-## 6. Server Preparation
+## 6. Compose File
+
+Add a `docker-compose.yml` to your consumer repo root. Use `templates/compose/service-compose.yml` as a starting point:
+
+```yaml
+services:
+  app:
+    image: ghcr.io/example/app:latest
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+```
+
+The CD workflow automatically uploads this file to the server at `remote-path` before deploying. You do **not** need to manually place it on the server.
+
+## 7. Server Preparation
 
 On each target server:
 
 1. Create the deploy user: `sudo adduser deploy`
 2. Add the deploy user's SSH public key to `~/.ssh/authorized_keys`
 3. Install Docker and Docker Compose
-4. Create the remote path directory (e.g. `/srv/site-marcel`)
-5. Place a `docker-compose.yml` in the remote path (see `templates/compose/service-compose.yml`)
+4. Ensure the deploy user can write to the `remote-path` directory (the workflow creates it via `mkdir -p` if it doesn't exist)
 
-## 7. Validation
+## 8. Validation
 
 After setup, verify end-to-end:
 
@@ -119,7 +133,7 @@ After setup, verify end-to-end:
 3. **Health check**: Verify the health URL returns HTTP 200.
 4. **Production CD**: Trigger a manual `workflow_dispatch` deploy and verify production.
 
-## 8. Rollback
+## 9. Rollback
 
 If a deployment fails:
 

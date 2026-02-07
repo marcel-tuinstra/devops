@@ -48,7 +48,7 @@ on:
         default: 22
         type: number
       compose-file:
-        description: Compose file relative to remote-path
+        description: Compose file path relative to consumer repo root
         required: false
         default: docker-compose.yml
         type: string
@@ -102,12 +102,23 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
       - name: Configure SSH
         run: |
           install -m 700 -d ~/.ssh
           printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p "${{ inputs.ssh-port }}" "${{ vars.SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Upload compose file
+        run: |
+          ssh -p "${{ inputs.ssh-port }}" "${{ inputs.ssh-user }}@${{ vars.SSH_HOST }}" \
+            "mkdir -p '${{ inputs.remote-path }}'"
+          scp -P "${{ inputs.ssh-port }}" \
+            "${{ inputs.compose-file }}" \
+            "${{ inputs.ssh-user }}@${{ vars.SSH_HOST }}:${{ inputs.remote-path }}/${{ inputs.compose-file }}"
 
       - name: Deploy image digest over SSH
         run: |

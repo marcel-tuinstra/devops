@@ -6,6 +6,7 @@ Workflow: `.github/workflows/reusable-cd-nuxt-ssg.yml`
 
 - Builds static Nuxt output into an nginx runtime image.
 - Pushes image to GHCR.
+- Uploads the compose file from the consumer repo to the target host via SCP.
 - Deploys immutable image digest via SSH to a Docker Compose host.
 - Verifies deployment health using a configurable endpoint.
 
@@ -15,7 +16,7 @@ Workflow: `.github/workflows/reusable-cd-nuxt-ssg.yml`
 - `image-name` — Full GHCR image name without tag
 - `health-url` — Health endpoint URL on target host
 - `environment` — GitHub Environment name (`staging` or `production`)
-- `remote-path` — Deploy path on target host containing compose file
+- `remote-path` — Deploy path on target host (compose file is uploaded here automatically)
 - `ssh-user` — SSH user for deploy host
 
 ## Required environment configuration
