@@ -42,10 +42,6 @@ on:
         description: SSH user for deploy host
         required: true
         type: string
-      ssh-host:
-        description: SSH host for deploy target
-        required: true
-        type: string
       ssh-port:
         description: SSH port
         required: false
@@ -56,10 +52,6 @@ on:
         required: false
         default: docker-compose.yml
         type: string
-    secrets:
-      ssh-private-key:
-        description: SSH private key used for deployment
-        required: true
 
 jobs:
   build-and-push:
@@ -82,7 +74,7 @@ jobs:
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ghcr
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
@@ -113,13 +105,13 @@ jobs:
       - name: Configure SSH
         run: |
           install -m 700 -d ~/.ssh
-          printf '%s\n' "${{ secrets.ssh-private-key }}" > ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -p "${{ inputs.ssh-port }}" "${{ inputs.ssh-host }}" >> ~/.ssh/known_hosts
+          ssh-keyscan -p "${{ inputs.ssh-port }}" "${{ vars.SSH_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Deploy image digest over SSH
         run: |
-          ssh -p "${{ inputs.ssh-port }}" "${{ inputs.ssh-user }}@${{ inputs.ssh-host }}" <<EOF
+          ssh -p "${{ inputs.ssh-port }}" "${{ inputs.ssh-user }}@${{ vars.SSH_HOST }}" <<EOF
           set -euo pipefail
           cd "${{ inputs.remote-path }}"
           cat > .deploy-override.yml <<OVERRIDE

@@ -4,8 +4,8 @@
 #
 # Required GitHub configuration in the consumer repo:
 #   Environment: production (with required reviewers recommended)
-#   Secrets:     SSH_PRODUCTION_PRIVATE_KEY
-#   Variables:   SSH_PRODUCTION_HOST
+#   Secrets:     SSH_PRIVATE_KEY (environment-level)
+#   Variables:   SSH_HOST (environment-level)
 
 name: Deploy Production
 
@@ -22,7 +22,4 @@ jobs:
       environment: production
       remote-path: <YOUR-REMOTE-PATH>              # e.g. /srv/site-marcel
       ssh-user: deploy
-      ssh-host: ${{ vars.SSH_PRODUCTION_HOST }}
       dockerfile: Dockerfile
-    secrets:
-      ssh-private-key: ${{ secrets.SSH_PRODUCTION_PRIVATE_KEY }}

@@ -50,29 +50,25 @@ Create two GitHub Environments in your consumer repo settings:
 | `staging` | Auto-deploys on push to `main` |
 | `production` | Manual deploy via `workflow_dispatch` (add required reviewers) |
 
-## 4. Secrets and Variables
+## 4. Secrets and Variables (Environment-level)
 
-Configure the following per environment:
+The reusable CD workflow reads SSH configuration directly from each environment. Configure these **per environment**:
 
-### Staging
-
-| Type | Name | Value |
-|---|---|---|
-| Secret | `SSH_STAGING_PRIVATE_KEY` | SSH private key for the staging server |
-| Variable | `SSH_STAGING_HOST` | Hostname or IP of the staging server |
-
-### Production
+### Staging Environment
 
 | Type | Name | Value |
 |---|---|---|
-| Secret | `SSH_PRODUCTION_PRIVATE_KEY` | SSH private key for the production server |
-| Variable | `SSH_PRODUCTION_HOST` | Hostname or IP of the production server |
+| Secret | `SSH_PRIVATE_KEY` | SSH private key for the staging server |
+| Variable | `SSH_HOST` | Hostname or IP of the staging server |
 
-### Repository-level (shared)
+### Production Environment
 
 | Type | Name | Value |
 |---|---|---|
-| Secret | `GHCR_TOKEN` | GitHub token with `packages:write` scope (or use `GITHUB_TOKEN`) |
+| Secret | `SSH_PRIVATE_KEY` | SSH private key for the production server |
+| Variable | `SSH_HOST` | Hostname or IP of the production server |
+
+> **Important:** These must be configured at the **environment level**, not repository level. The workflow sets `environment: staging` or `environment: production` on the deploy job, and GitHub resolves the vars/secrets from that specific environment context.
 
 ## 5. Caller Workflows
 
@@ -88,6 +84,8 @@ cp <devops-repo>/templates/workflows/caller-cd-nuxt-production.yml .github/workf
 ```
 
 Replace all `<YOUR-...>` placeholders with actual values for your project.
+
+Note: The caller workflows do NOT pass SSH host or private key — these are read automatically from the environment configuration you set in step 4.
 
 For CI (lint + typecheck + build):
 
@@ -135,5 +133,14 @@ If a deployment fails:
 |---|---|
 | `image not found` during deploy | GHCR token missing or insufficient permissions |
 | SSH connection refused | SSH key not configured or wrong host variable |
+| `SSH_HOST` or `SSH_PRIVATE_KEY` not found | Secrets/vars configured at repo level instead of environment level |
 | Health check timeout | Health endpoint not reachable or returns non-200 |
 | `dockerfile not found` | Missing `Dockerfile` in consumer repo root |
+
+## Breaking Changes from Earlier Versions
+
+### v1.0 → v1.1
+
+- **Removed**: `ssh-host` input and `ssh-private-key` secret from workflow interface
+- **Changed**: SSH configuration now read directly from environment-level `SSH_HOST` (variable) and `SSH_PRIVATE_KEY` (secret)
+- **Action required**: Rename environment variables/secrets and remove ssh-host/ssh-private-key from caller workflows
