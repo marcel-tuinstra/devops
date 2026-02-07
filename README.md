@@ -1,6 +1,8 @@
 # DevOps Platform Repository
 
-This private repository is the shared DevOps foundation for reusable workflows, deployment automation, templates, and platform standards used across Marcel Tuinstra projects.
+This public repository is the shared DevOps foundation for reusable workflows, deployment automation, templates, and platform standards used across Marcel Tuinstra projects.
+
+> **Why public?** GitHub requires reusable workflow repositories to be public when used from personal accounts. This repo contains only generic platform assets — no secrets or application code.
 
 ## Architecture
 
@@ -27,9 +29,14 @@ Auth0 is the accepted central identity provider for the DevOps platform and down
 
 ## Access Model
 
-- Repository visibility: private.
-- Consumer organizations should have read-only access.
+- Repository visibility: public (required for reusable workflow consumption).
+- No secrets, credentials, or application code are stored in this repository.
 - Write access remains limited to maintainers of this DevOps platform repo.
+- Consumer repos reference workflows via `uses: marcel-tuinstra/devops/.github/workflows/<workflow>@v1`.
+
+## Consumer Onboarding
+
+See `docs/onboarding/consumer-migration-checklist.md` for a step-by-step guide to integrating your project with these reusable workflows.
 
 ## Reusable Workflow Example
 

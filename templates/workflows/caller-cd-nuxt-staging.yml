@@ -1,3 +1,12 @@
+# Template: Staging CD caller workflow for Nuxt SSG sites.
+# Copy this file to your consumer repo at .github/workflows/deploy-staging.yml
+# and replace <YOUR-...> placeholders with actual values.
+#
+# Required GitHub configuration in the consumer repo:
+#   Environment: staging
+#   Secrets:     SSH_STAGING_PRIVATE_KEY
+#   Variables:   SSH_STAGING_HOST
+
 name: Deploy Staging
 
 on:
@@ -9,12 +18,13 @@ jobs:
   deploy:
     uses: marcel-tuinstra/devops/.github/workflows/reusable-cd-nuxt-ssg.yml@v1
     with:
-      service-name: web
-      image-name: ghcr.io/marcel-tuinstra/site-marcel
-      health-url: https://staging.example.com/health
+      service-name: <YOUR-SERVICE-NAME>           # e.g. web
+      image-name: ghcr.io/<YOUR-ORG>/<YOUR-REPO>  # e.g. ghcr.io/marcel-tuinstra/site-marcel
+      health-url: <YOUR-STAGING-HEALTH-URL>        # e.g. https://staging.example.com/health
       environment: staging
-      remote-path: /srv/site-marcel
+      remote-path: <YOUR-REMOTE-PATH>              # e.g. /srv/site-marcel
       ssh-user: deploy
-      ssh-host: staging.example.com
+      ssh-host: ${{ vars.SSH_STAGING_HOST }}
+      dockerfile: Dockerfile
     secrets:
       ssh-private-key: ${{ secrets.SSH_STAGING_PRIVATE_KEY }}

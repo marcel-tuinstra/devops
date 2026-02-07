@@ -1,3 +1,12 @@
+# Template: Production CD caller workflow for Nuxt SSG sites.
+# Copy this file to your consumer repo at .github/workflows/deploy-production.yml
+# and replace <YOUR-...> placeholders with actual values.
+#
+# Required GitHub configuration in the consumer repo:
+#   Environment: production (with required reviewers recommended)
+#   Secrets:     SSH_PRODUCTION_PRIVATE_KEY
+#   Variables:   SSH_PRODUCTION_HOST
+
 name: Deploy Production
 
 on:
@@ -7,12 +16,13 @@ jobs:
   deploy:
     uses: marcel-tuinstra/devops/.github/workflows/reusable-cd-nuxt-ssg.yml@v1
     with:
-      service-name: web
-      image-name: ghcr.io/marcel-tuinstra/site-marcel
-      health-url: https://example.com/health
+      service-name: <YOUR-SERVICE-NAME>           # e.g. web
+      image-name: ghcr.io/<YOUR-ORG>/<YOUR-REPO>  # e.g. ghcr.io/marcel-tuinstra/site-marcel
+      health-url: <YOUR-PRODUCTION-HEALTH-URL>     # e.g. https://example.com/health
       environment: production
-      remote-path: /srv/site-marcel
+      remote-path: <YOUR-REMOTE-PATH>              # e.g. /srv/site-marcel
       ssh-user: deploy
-      ssh-host: production.example.com
+      ssh-host: ${{ vars.SSH_PRODUCTION_HOST }}
+      dockerfile: Dockerfile
     secrets:
       ssh-private-key: ${{ secrets.SSH_PRODUCTION_PRIVATE_KEY }}

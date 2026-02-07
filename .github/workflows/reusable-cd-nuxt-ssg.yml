@@ -30,9 +30,9 @@ on:
         default: .
         type: string
       dockerfile:
-        description: Dockerfile path
+        description: Dockerfile path relative to consumer repo root
         required: false
-        default: templates/docker/nuxt-ssg-nginx.Dockerfile
+        default: Dockerfile
         type: string
       remote-path:
         description: Deploy path on target host containing compose file
