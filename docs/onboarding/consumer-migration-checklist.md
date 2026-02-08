@@ -31,14 +31,18 @@ Adjust the build command and output path to match your project.
 
 ## 2. Health Endpoint
 
-Ensure your application serves a health endpoint at `/health` that returns HTTP 200.
-For Nuxt SSG sites behind nginx, create a static file at `public/health` containing `ok`:
+Create a static file at `public/health` in your consumer repo containing `ok`:
 
 ```
 ok
 ```
 
-This gets included in the generated output and served by nginx automatically — no extra configuration needed.
+This gets included in the generated output and served by nginx automatically.
+
+The CD workflow health check runs **via SSH** on the server, curling `localhost:<host-port>/health` directly. This means:
+- No external DNS or reverse proxy configuration is needed for the health check to pass
+- First-time deploys to new environments work immediately
+- The health check verifies the container is actually serving traffic
 
 ## 3. GitHub Environments
 

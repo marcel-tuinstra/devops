@@ -8,16 +8,24 @@ Workflow: `.github/workflows/reusable-cd-nuxt-ssg.yml`
 - Pushes image to GHCR.
 - Uploads the compose file from the consumer repo to the target host via SCP.
 - Deploys immutable image digest via SSH to a Docker Compose host.
-- Verifies deployment health using a configurable endpoint.
+- Verifies deployment health via SSH by curling `localhost:<host-port>/health` directly on the server (no external DNS/proxy required).
 
 ## Required inputs
 
 - `service-name` — Docker Compose service name on target host
 - `image-name` — Full GHCR image name without tag
-- `health-url` — Health endpoint URL on target host
 - `environment` — GitHub Environment name (`staging` or `production`)
 - `remote-path` — Deploy path on target host (compose file is uploaded here automatically)
 - `ssh-user` — SSH user for deploy host
+
+## Optional inputs
+
+- `health-url` — Public health URL (informational only, not used for health checks)
+- `port` — Container-internal port (default: `80`, used to resolve the mapped host port)
+- `compose-file` — Compose file path relative to consumer repo root (default: `docker-compose.yml`)
+- `dockerfile` — Dockerfile path relative to consumer repo root (default: `Dockerfile`)
+- `ssh-port` — SSH port (default: `22`)
+- `workdir` — Project working directory (default: `.`)
 
 ## Required environment configuration
 

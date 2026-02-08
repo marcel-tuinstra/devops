@@ -12,8 +12,9 @@ on:
         required: true
         type: string
       health-url:
-        description: Health endpoint URL on target host
-        required: true
+        description: "Public health URL (optional, informational only — health check runs via SSH on localhost)"
+        required: false
+        default: ""
         type: string
       port:
         description: Exposed service port
@@ -140,11 +141,18 @@ jobs:
           timeout=180
           interval=5
           deadline=$(( $(date +%s) + timeout ))
+          # Resolve the host port from the running container
+          mapped=$(ssh -p "${{ inputs.ssh-port }}" "${{ inputs.ssh-user }}@${{ vars.SSH_HOST }}" \
+            "cd '${{ inputs.remote-path }}' && docker compose -f '${{ inputs.compose-file }}' port '${{ inputs.service-name }}' ${{ inputs.port }}")
+          host_port=$(echo "$mapped" | cut -d: -f2)
+          echo "Container mapped to localhost:${host_port}"
           while [[ $(date +%s) -lt $deadline ]]; do
-            if curl -fsS "${{ inputs.health-url }}" >/dev/null 2>&1; then
+            if ssh -p "${{ inputs.ssh-port }}" "${{ inputs.ssh-user }}@${{ vars.SSH_HOST }}" \
+              "curl -fsS http://localhost:${host_port}/health" >/dev/null 2>&1; then
+              echo "Health check passed on localhost:${host_port}/health"
               exit 0
             fi
             sleep "$interval"
           done
-          echo "Health check failed for ${{ inputs.health-url }}" >&2
+          echo "Health check failed on localhost:${host_port}/health" >&2
           exit 1
