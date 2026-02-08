@@ -13,6 +13,11 @@ on:
         required: false
         default: "."
         type: string
+      install-command:
+        description: "Install command (default: npm ci)"
+        required: false
+        default: "npm ci"
+        type: string
       test-command:
         description: Command used to run tests
         required: false
@@ -37,7 +42,7 @@ jobs:
           cache-dependency-path: ${{ inputs.workdir }}/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: ${{ inputs['install-command'] }}
 
       - name: Lint
         run: npm run lint --if-present
