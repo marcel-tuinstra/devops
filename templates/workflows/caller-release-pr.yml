@@ -1,0 +1,65 @@
+# Template: Release PR workflow for consumer repos.
+# Copy this file to your consumer repo at .github/workflows/release.yml.
+#
+# Trigger manually via "Run workflow" in GitHub Actions.
+# Creates a PR from develop → main with a changelog of commits.
+# Merging the PR triggers Deploy Production.
+
+name: Create Release PR
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  release-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create release PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          date=$(date +%Y-%m-%d)
+          base_title="release: ${date}"
+
+          # Check if a release PR already exists for today
+          existing=$(gh pr list --base main --head develop --search "${base_title}" --json number --jq 'length')
+          if [[ "$existing" -gt 0 ]]; then
+            # Append counter
+            count=$((existing + 1))
+            title="${base_title}.${count}"
+          else
+            title="${base_title}"
+          fi
+
+          # Generate changelog: commits on develop not yet in main
+          changelog=$(git log origin/main..origin/develop --oneline --no-merges --format="- %s" || echo "- No new commits")
+
+          # Check if there are actually changes to release
+          if [[ -z "$(git log origin/main..origin/develop --oneline)" ]]; then
+            echo "No changes to release — develop and main are in sync."
+            exit 0
+          fi
+
+          gh pr create \
+            --base main \
+            --head develop \
+            --title "${title}" \
+            --body "## ${title}
+
+          ### Changes
+
+          ${changelog}
+          "
+
+          echo "Release PR created: ${title}"

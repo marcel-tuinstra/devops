@@ -73,3 +73,32 @@ make release-tag TAG=v1
 # The target validates TAG is provided and runs:
 # git tag -f $TAG HEAD && git push origin $TAG --force
 ```
+
+---
+
+## Consumer Repo Releases
+
+Consumer repos (site-marcel, site-tuinstra, etc.) use a different release model. They do NOT use version tags or GitHub Releases.
+
+### How it works
+
+1. Code flows through feature branches → `develop` (staging) → `main` (production).
+2. To promote `develop` to production, run the **Create Release PR** workflow via `workflow_dispatch`.
+3. This creates a PR from `develop` → `main` with an auto-generated changelog.
+4. Merging the PR pushes to `main` and triggers Deploy Production.
+
+### Why no version tags?
+
+- The Docker image digest (pinned during CD) is the deployment artifact and rollback unit.
+- The release PR serves as the audit trail for what went to production and when.
+- Version tags add overhead without improving the recovery path.
+
+### Template
+
+See `templates/workflows/caller-release-pr.yml` for the workflow template.
+
+### Future: product repos
+
+Product repos with external users (airporttoday, subtrack) may need proper semantic versioning, changelogs, and GitHub Releases. This will be implemented under SC-210 when those repos are onboarded.
+
+See `branching-strategy.md` for the full branching model.

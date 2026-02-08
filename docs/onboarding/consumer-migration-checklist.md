@@ -169,16 +169,30 @@ Use a two-branch model:
 | `develop` | Staging | Push |
 | `main` | Production | Push |
 
-Typical flow: work on feature branches, merge to `develop` for staging verification, then merge `develop` into `main` for production.
+Typical flow: work on feature branches, merge to `develop` for staging verification, then create a release PR to promote `develop` → `main` for production.
 
-## 9. DNS and Reverse Proxy
+See `docs/workflows/branching-strategy.md` for the full branching model.
+
+## 9. Release Workflow
+
+Copy the release PR template into your consumer repo:
+
+```bash
+cp <devops-repo>/templates/workflows/caller-release-pr.yml .github/workflows/release.yml
+```
+
+This adds a **Create Release PR** workflow triggered via `workflow_dispatch` (manual "Run workflow" button in GitHub Actions). It creates a PR from `develop` → `main` with an auto-generated changelog. Merging that PR triggers Deploy Production.
+
+No git tags or GitHub Releases are needed — the release PR is the audit trail and the Docker image digest is the rollback unit.
+
+## 10. DNS and Reverse Proxy
 
 - **DNS**: Add a wildcard A-record `*.<your-domain>` pointing to your server.
 - **Staging URL**: `staging.<your-domain>` (e.g. `staging.marcel.tuinstra.dev`)
 - **Production URL**: `<your-domain>` (e.g. `marcel.tuinstra.dev`)
 - **Reverse proxy**: Configure Nginx Proxy Manager (or similar) to proxy each hostname to the corresponding local port with SSL.
 
-## 10. Validation
+## 11. Validation
 
 After setup, verify end-to-end:
 
@@ -188,7 +202,7 @@ After setup, verify end-to-end:
 4. **Production CD**: Push to `main` and confirm production deployment succeeds.
 5. **Health check**: Verify the production health URL returns HTTP 200.
 
-## 11. Rollback
+## 12. Rollback
 
 If a deployment fails:
 
