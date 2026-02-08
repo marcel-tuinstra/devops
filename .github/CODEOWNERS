@@ -1,0 +1,14 @@
+# CODEOWNERS for devops platform repository
+#
+# Changes to reusable workflows require platform owner approval.
+# This prevents accidental breaking changes to consumer repositories.
+
+# Reusable workflows - require platform owner review
+.github/workflows/reusable-*.yml @marcel-tuinstra
+
+# Workflow contracts - require platform owner review
+docs/workflows/contracts/ @marcel-tuinstra
+
+# Versioning and release policy - require platform owner review
+docs/workflows/versioning-policy.md @marcel-tuinstra
+docs/workflows/release-procedure.md @marcel-tuinstra
