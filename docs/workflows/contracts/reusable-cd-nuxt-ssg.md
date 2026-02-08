@@ -6,7 +6,7 @@
 
 ## Purpose
 
-Reusable CD workflow for deploying Nuxt SSG (static site generation) applications via Docker to a remote host.
+Reusable CD workflow for deploying Nuxt SSG (static site generation) applications via Docker to a remote host. Includes security scanning with Trivy before deployment.
 
 ## Trigger
 
@@ -31,6 +31,8 @@ on:
 | `ssh-port` | number | No | `22` | SSH port |
 | `compose-file` | string | No | `docker-compose.yml` | Compose file path |
 | `build-args` | string | No | `""` | Newline-separated Docker build args |
+| `trivy-severity` | string | No | `"CRITICAL,HIGH"` | Comma-separated severity levels to scan |
+| `trivy-exit-code` | string | No | `"1"` | Exit code on findings (1 = fail, 0 = warn) |
 
 ## Outputs
 
@@ -38,7 +40,7 @@ None exposed to caller. Internal outputs:
 
 | Output | Source Job | Description |
 |--------|-----------|-------------|
-| `image-ref` | `build-and-push` | Immutable image reference with digest |
+| `image-ref` | `build-scan-push` | Immutable image reference with digest |
 
 ## Required Secrets
 
@@ -60,23 +62,28 @@ These must be configured in the GitHub Environment:
 permissions:
   contents: read
   packages: write
+  security-events: write
 ```
 
 ## Jobs
 
 | Job | Description |
 |-----|-------------|
-| `build-and-push` | Build Docker image and push to GHCR |
+| `build-scan-push` | Build image, scan with Trivy, push to GHCR |
 | `deploy` | Deploy image to remote host via SSH |
 
 ## Expected Behavior
 
-### build-and-push
+### build-scan-push
 1. Checkout code
 2. Setup Docker Buildx
 3. Login to GHCR
-4. Build and push image with SHA tag
-5. Output immutable image reference (digest)
+4. Build image locally (no push)
+5. Run Trivy security scan
+6. Upload SARIF results to GitHub Security tab
+7. **Fail if CRITICAL/HIGH vulnerabilities found** (configurable)
+8. Push image to GHCR only if scan passes
+9. Output immutable image reference (digest)
 
 ### deploy
 1. Checkout code
@@ -84,6 +91,23 @@ permissions:
 3. Upload compose file to remote host
 4. Deploy using digest-pinned image reference
 5. Run health check on localhost (via SSH tunnel)
+
+## Security Scanning
+
+The workflow uses [Trivy](https://trivy.dev/) to scan Docker images for vulnerabilities before deployment.
+
+**Default behavior:**
+- Scans for `CRITICAL` and `HIGH` severity vulnerabilities
+- Fails the pipeline if any are found (exit code 1)
+- Ignores unfixed vulnerabilities (only actionable findings)
+- Uploads results to GitHub Security tab (SARIF format)
+
+**Customization:**
+```yaml
+with:
+  trivy-severity: "CRITICAL"        # Only fail on CRITICAL
+  trivy-exit-code: "0"              # Warn only, don't fail
+```
 
 ## Health Check Contract
 
@@ -101,6 +125,7 @@ Changes that require a major version bump:
 - Changing required secrets or environment variables
 - Modifying health check behavior
 - Changing image tagging strategy
+- Changing default security scan behavior
 
 ## Example Caller
 

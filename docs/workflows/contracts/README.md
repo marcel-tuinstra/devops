@@ -15,6 +15,7 @@ Workflow contracts document the stable API surface of each reusable workflow:
 | Workflow | Version | Status |
 |----------|---------|--------|
 | [reusable-ci.yml](reusable-ci.md) | v1 | Stable |
+| [reusable-ci-docker.yml](reusable-ci-docker.md) | v1 | Stable |
 | [reusable-cd-nuxt-ssg.yml](reusable-cd-nuxt-ssg.md) | v1 | Stable |
 
 ## Governance
