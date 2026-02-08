@@ -1,0 +1,46 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Default Renovate preset for all repos",
+  "extends": [
+    "config:recommended",
+    ":separateMajorReleases",
+    ":prHourlyLimitNone",
+    ":prConcurrentLimitNone"
+  ],
+  "baseBranches": ["develop"],
+  "labels": ["dependencies"],
+  "rangeStrategy": "pin",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on monday"]
+  },
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"]
+  },
+  "packageRules": [
+    {
+      "description": "Automerge patch updates",
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    },
+    {
+      "description": "Group minor updates",
+      "matchUpdateTypes": ["minor"],
+      "groupName": "minor updates"
+    },
+    {
+      "description": "Pin Docker digests",
+      "matchDatasources": ["docker"],
+      "pinDigests": true
+    },
+    {
+      "description": "Security updates get priority label",
+      "matchUpdateTypes": ["patch", "minor", "major"],
+      "matchVulnerabilityPriority": ["critical", "high", "medium", "low"],
+      "labels": ["security", "priority"]
+    }
+  ]
+}
