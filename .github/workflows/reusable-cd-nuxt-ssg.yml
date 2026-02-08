@@ -53,6 +53,11 @@ on:
         required: false
         default: docker-compose.yml
         type: string
+      build-args:
+        description: "Newline-separated Docker build args (e.g. ARG_NAME=value)"
+        required: false
+        default: ""
+        type: string
 
 jobs:
   build-and-push:
@@ -88,6 +93,7 @@ jobs:
           push: true
           tags: |
             ${{ inputs.image-name }}:${{ github.sha }}
+          build-args: ${{ inputs.build-args }}
 
       - name: Prepare immutable image reference
         id: image
