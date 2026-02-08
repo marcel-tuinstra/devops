@@ -1,0 +1,36 @@
+name: Chore
+description: Maintenance task, refactoring, or documentation update
+labels: ["chore"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for maintenance tasks, refactoring, or documentation updates.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What needs to be done?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type
+      options:
+        - Refactoring
+        - Documentation
+        - Dependency update
+        - CI/CD improvement
+        - Cleanup
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Add any other context or details.

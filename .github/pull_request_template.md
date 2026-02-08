@@ -1,9 +1,13 @@
 ## Summary
-- 
 
-## Testing
-- [ ] make lint
-- [ ] make test
+<!-- Describe what this PR changes and why -->
+
+## Checklist
+
+- [ ] `make lint` passes
+- [ ] `make test` passes
+- [ ] Documentation updated (if applicable)
 
 ## Shortcut
-- Story: 
+
+<!-- Link to Shortcut story: https://app.shortcut.com/tuinstradev/story/XXX -->
