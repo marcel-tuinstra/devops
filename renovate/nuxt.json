@@ -1,0 +1,39 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Renovate preset for Nuxt projects",
+  "extends": [
+    "github>marcel-tuinstra/devops:renovate/default"
+  ],
+  "packageRules": [
+    {
+      "description": "Group Nuxt packages",
+      "matchPackagePatterns": ["^nuxt", "^@nuxt/"],
+      "groupName": "nuxt"
+    },
+    {
+      "description": "Group Vue packages",
+      "matchPackagePatterns": ["^vue", "^@vue/"],
+      "groupName": "vue"
+    },
+    {
+      "description": "Group Nuxt UI packages",
+      "matchPackagePatterns": ["^@nuxt/ui", "^@nuxtjs/"],
+      "groupName": "nuxt-ui"
+    },
+    {
+      "description": "Group TypeScript and type definitions",
+      "matchPackagePatterns": ["^typescript", "^@types/"],
+      "groupName": "typescript"
+    },
+    {
+      "description": "Group ESLint packages",
+      "matchPackagePatterns": ["^eslint", "^@eslint/", "^@typescript-eslint/"],
+      "groupName": "eslint"
+    },
+    {
+      "description": "Group Tailwind packages",
+      "matchPackagePatterns": ["^tailwindcss", "^@tailwindcss/"],
+      "groupName": "tailwind"
+    }
+  ]
+}
