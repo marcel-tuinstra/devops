@@ -1,7 +1,6 @@
 name: Example caller for reusable CI
 
 on:
-  pull_request:
   workflow_dispatch:
 
 jobs:
