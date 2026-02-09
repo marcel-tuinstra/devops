@@ -1,0 +1,78 @@
+name: Reusable CI Docker
+
+on:
+  workflow_call:
+    inputs:
+      workdir:
+        description: Working directory containing Dockerfile
+        required: false
+        default: "."
+        type: string
+      dockerfile:
+        description: Dockerfile path relative to workdir
+        required: false
+        default: "Dockerfile"
+        type: string
+      build-args:
+        description: "Newline-separated Docker build args (e.g. ARG_NAME=value)"
+        required: false
+        default: ""
+        type: string
+      trivy-severity:
+        description: "Comma-separated severity levels to scan for"
+        required: false
+        default: "CRITICAL,HIGH"
+        type: string
+      trivy-exit-code:
+        description: "Exit code when vulnerabilities are found (1 = fail, 0 = warn only)"
+        required: false
+        default: "1"
+        type: string
+
+jobs:
+  build-and-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image for scanning
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ inputs.workdir }}
+          file: ${{ inputs.workdir }}/${{ inputs.dockerfile }}
+          push: false
+          load: true
+          tags: scan-target:${{ github.sha }}
+          build-args: ${{ inputs.build-args }}
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: scan-target:${{ github.sha }}
+          format: table
+          exit-code: ${{ inputs.trivy-exit-code }}
+          severity: ${{ inputs.trivy-severity }}
+          ignore-unfixed: true
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: aquasecurity/trivy-action@0.28.0
+        if: always()
+        with:
+          image-ref: scan-target:${{ github.sha }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: ${{ inputs.trivy-severity }}
+          ignore-unfixed: true
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif

@@ -1,0 +1,20 @@
+# Template: Docker CI workflow for consumer repos.
+# Copy this file to your consumer repo at .github/workflows/ci-docker.yml.
+#
+# Builds Docker image and scans for vulnerabilities on pull requests.
+# Blocks merge if CRITICAL or HIGH vulnerabilities are found.
+
+name: CI Docker
+
+on:
+  pull_request:
+
+jobs:
+  docker-scan:
+    uses: marcel-tuinstra/devops/.github/workflows/reusable-ci-docker.yml@v1
+    with:
+      dockerfile: Dockerfile
+      # Uncomment to customize:
+      # workdir: .
+      # trivy-severity: "CRITICAL,HIGH"
+      # trivy-exit-code: "1"
