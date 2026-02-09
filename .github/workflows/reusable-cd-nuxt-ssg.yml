@@ -2,6 +2,10 @@ name: Reusable CD Nuxt SSG
 
 on:
   workflow_call:
+    secrets:
+      SSH_PRIVATE_KEY:
+        description: SSH private key for deployment host authentication
+        required: true
     inputs:
       service-name:
         description: Docker Compose service name on target host
