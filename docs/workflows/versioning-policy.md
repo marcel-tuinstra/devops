@@ -1,5 +1,7 @@
 # Reusable Workflow Versioning Policy
 
+> See also: [Workflow Contracts](contracts/README.md) for detailed API specifications.
+
 ## Goals
 
 - Keep consumer repositories stable during workflow evolution.
@@ -83,3 +85,12 @@ Release message:
 - Verify environment secrets and required permissions.
 - Run repository CI and deployment smoke tests.
 - Keep rollback instruction (`@v1`) prepared until stabilization.
+
+## Governance
+
+Workflow changes are governed by CODEOWNERS. Changes to:
+- `.github/workflows/reusable-*.yml`
+- `docs/workflows/contracts/`
+- `docs/workflows/versioning-policy.md`
+
+Require approval from platform owners before merge.
