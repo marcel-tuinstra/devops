@@ -51,11 +51,12 @@ on:
     outputs:
       coverage-percentage:
         description: "Overall coverage percentage"
-        value: ${{ jobs.test.outputs.coverage }}
+        value: ${{ jobs.test-postgres.outputs.coverage || jobs.test-sqlite.outputs.coverage }}
 
 jobs:
-  test:
-    name: PHP Tests
+  test-postgres:
+    name: PHP Tests (PostgreSQL)
+    if: ${{ inputs.database == 'postgres' }}
     runs-on: ubuntu-latest
     outputs:
       coverage: ${{ steps.coverage-report.outputs.percentage }}
@@ -64,7 +65,7 @@ jobs:
         working-directory: ${{ inputs.workdir }}
     services:
       postgres:
-        image: ${{ inputs.database == 'postgres' && format('postgres:{0}', inputs.postgres-version) || '' }}
+        image: postgres:${{ inputs.postgres-version }}
         env:
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
@@ -81,7 +82,7 @@ jobs:
       APP_ENV: test
       APP_DEBUG: 1
       APP_SECRET: test_secret_for_ci
-      DATABASE_URL: ${{ inputs.database == 'postgres' && 'postgresql://test:test@127.0.0.1:5432/test_db?serverVersion=16' || format('sqlite:///{0}/var/cache/test/app_ci.db', github.workspace) }}
+      DATABASE_URL: postgresql://test:test@127.0.0.1:5432/test_db?serverVersion=${{ inputs.postgres-version }}
 
     steps:
       - name: Checkout
@@ -93,7 +94,7 @@ jobs:
         uses: shivammathur/setup-php@c541c155eee45413f5b09a52248675b1a2575231
         with:
           php-version: ${{ inputs.php-version }}
-          extensions: ${{ inputs.extensions }}${{ inputs.database == 'sqlite' && ', pdo_sqlite' || '' }}
+          extensions: ${{ inputs.extensions }}
           tools: composer:v2
           coverage: ${{ inputs.coverage && 'xdebug' || 'none' }}
 
@@ -123,7 +124,6 @@ jobs:
       - name: Run PHPUnit (without coverage)
         if: ${{ !inputs.coverage }}
         run: |
-          PHPUNIT_ARGS=""
           if [ -n "${{ inputs.test-suites }}" ]; then
             IFS=',' read -ra SUITES <<< "${{ inputs.test-suites }}"
             for suite in "${SUITES[@]}"; do
@@ -164,8 +164,117 @@ jobs:
         id: coverage-report
         if: ${{ inputs.coverage }}
         run: |
-          COVERAGE=$(grep -oP 'Lines:\s+\K[\d.]+' var/coverage/cobertura.xml 2>/dev/null || echo "0")
-          echo "percentage=$COVERAGE" >> $GITHUB_OUTPUT
+          COVERAGE=$(grep -oP 'line-rate="\K[\d.]+' var/coverage/cobertura.xml 2>/dev/null | head -1 || echo "0")
+          PERCENTAGE=$(echo "$COVERAGE * 100" | bc 2>/dev/null || echo "0")
+          echo "percentage=$PERCENTAGE" >> $GITHUB_OUTPUT
+
+      - name: Upload coverage artifact
+        if: ${{ inputs.coverage }}
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
+        with:
+          name: coverage-report
+          path: var/coverage/
+          retention-days: 7
+
+  test-sqlite:
+    name: PHP Tests (SQLite)
+    if: ${{ inputs.database == 'sqlite' }}
+    runs-on: ubuntu-latest
+    outputs:
+      coverage: ${{ steps.coverage-report.outputs.percentage }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.workdir }}
+
+    env:
+      APP_ENV: test
+      APP_DEBUG: 1
+      APP_SECRET: test_secret_for_ci
+      DATABASE_URL: sqlite:///${{ github.workspace }}/var/cache/test/app_ci.db
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@c541c155eee45413f5b09a52248675b1a2575231
+        with:
+          php-version: ${{ inputs.php-version }}
+          extensions: ${{ inputs.extensions }}, pdo_sqlite
+          tools: composer:v2
+          coverage: ${{ inputs.coverage && 'xdebug' || 'none' }}
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Prepare test directories
+        run: mkdir -p var/cache/test var/coverage
+
+      - name: Run migrations
+        if: ${{ inputs.run-migrations }}
+        run: |
+          php bin/console doctrine:database:create --env=test --if-not-exists || true
+          php bin/console doctrine:migrations:migrate --env=test --no-interaction || true
+
+      - name: Run PHPUnit (without coverage)
+        if: ${{ !inputs.coverage }}
+        run: |
+          if [ -n "${{ inputs.test-suites }}" ]; then
+            IFS=',' read -ra SUITES <<< "${{ inputs.test-suites }}"
+            for suite in "${SUITES[@]}"; do
+              vendor/bin/phpunit --testsuite "$(echo $suite | xargs)"
+            done
+          else
+            vendor/bin/phpunit
+          fi
+
+      - name: Run PHPUnit (with coverage)
+        if: ${{ inputs.coverage }}
+        run: |
+          PHPUNIT_ARGS="--coverage-cobertura var/coverage/cobertura.xml --coverage-text"
+          if [ -n "${{ inputs.test-suites }}" ]; then
+            IFS=',' read -ra SUITES <<< "${{ inputs.test-suites }}"
+            SUITE_ARGS=""
+            for suite in "${SUITES[@]}"; do
+              SUITE_ARGS="$SUITE_ARGS --testsuite $(echo $suite | xargs)"
+            done
+            vendor/bin/phpunit $SUITE_ARGS $PHPUNIT_ARGS
+          else
+            vendor/bin/phpunit $PHPUNIT_ARGS
+          fi
+
+      - name: Install diff-cover
+        if: ${{ inputs.coverage && inputs.diff-coverage-threshold != '0' }}
+        run: pip install diff-cover
+
+      - name: Enforce diff coverage threshold
+        if: ${{ inputs.coverage && inputs.diff-coverage-threshold != '0' && github.event_name == 'pull_request' }}
+        run: |
+          git fetch origin ${{ github.base_ref }} --depth=1
+          diff-cover var/coverage/cobertura.xml \
+            --compare-branch origin/${{ github.base_ref }} \
+            --fail-under ${{ inputs.diff-coverage-threshold }}
+
+      - name: Extract coverage percentage
+        id: coverage-report
+        if: ${{ inputs.coverage }}
+        run: |
+          COVERAGE=$(grep -oP 'line-rate="\K[\d.]+' var/coverage/cobertura.xml 2>/dev/null | head -1 || echo "0")
+          PERCENTAGE=$(echo "$COVERAGE * 100" | bc 2>/dev/null || echo "0")
+          echo "percentage=$PERCENTAGE" >> $GITHUB_OUTPUT
 
       - name: Upload coverage artifact
         if: ${{ inputs.coverage }}
