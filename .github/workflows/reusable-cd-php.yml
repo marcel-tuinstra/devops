@@ -1,0 +1,318 @@
+name: Reusable CD PHP
+
+on:
+  workflow_call:
+    secrets:
+      SSH_PRIVATE_KEY:
+        description: SSH private key for deployment host authentication
+        required: true
+    inputs:
+      service-name:
+        description: Docker Compose PHP service name on target host
+        required: true
+        type: string
+      nginx-service-name:
+        description: Docker Compose nginx service name on target host
+        required: false
+        default: "nginx"
+        type: string
+      image-name:
+        description: Full GHCR image name without tag (used for both php and nginx images)
+        required: true
+        type: string
+      health-url:
+        description: "Public health URL (optional, informational only - health check runs via SSH on localhost)"
+        required: false
+        default: ""
+        type: string
+      port:
+        description: Exposed nginx service port (internal container port)
+        required: false
+        default: 80
+        type: number
+      environment:
+        description: GitHub Environment name (staging or production)
+        required: true
+        type: string
+      workdir:
+        description: Project working directory
+        required: false
+        default: .
+        type: string
+      dockerfile:
+        description: Dockerfile path relative to consumer repo root
+        required: false
+        default: Dockerfile
+        type: string
+      remote-path:
+        description: Deploy path on target host containing compose file
+        required: true
+        type: string
+      ssh-user:
+        description: SSH user for deploy host
+        required: true
+        type: string
+      ssh-port:
+        description: SSH port
+        required: false
+        default: 22
+        type: number
+      compose-file:
+        description: Compose file path relative to consumer repo root
+        required: false
+        default: docker-compose.yml
+        type: string
+      build-args:
+        description: "Newline-separated Docker build args (e.g. ARG_NAME=value)"
+        required: false
+        default: ""
+        type: string
+      trivy-severity:
+        description: "Comma-separated severity levels to scan for"
+        required: false
+        default: "CRITICAL,HIGH"
+        type: string
+      trivy-exit-code:
+        description: "Exit code when vulnerabilities are found (1 = fail, 0 = warn only)"
+        required: false
+        default: "1"
+        type: string
+      run-migrations:
+        description: "Run Doctrine migrations after deploy"
+        required: false
+        default: false
+        type: boolean
+      restart-worker:
+        description: "Restart messenger worker service after deploy"
+        required: false
+        default: false
+        type: boolean
+      worker-service:
+        description: "Name of worker service in compose file"
+        required: false
+        default: "worker"
+        type: string
+
+jobs:
+  build-scan-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    defaults:
+      run:
+        working-directory: ${{ inputs.workdir }}
+    outputs:
+      php-image-ref: ${{ steps.php-image.outputs.image_ref }}
+      nginx-image-ref: ${{ steps.nginx-image.outputs.image_ref }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      # Build PHP image
+      - name: Build PHP image for scanning
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ inputs.workdir }}
+          file: ${{ inputs.dockerfile }}
+          target: php_prod
+          push: false
+          load: true
+          tags: scan-target-php:${{ github.sha }}
+          build-args: ${{ inputs.build-args }}
+
+      - name: Run Trivy on PHP image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: scan-target-php:${{ github.sha }}
+          format: table
+          exit-code: ${{ inputs.trivy-exit-code }}
+          severity: ${{ inputs.trivy-severity }}
+          ignore-unfixed: true
+
+      - name: Upload Trivy PHP scan results
+        uses: aquasecurity/trivy-action@0.28.0
+        if: always()
+        with:
+          image-ref: scan-target-php:${{ github.sha }}
+          format: sarif
+          output: trivy-php-results.sarif
+          severity: ${{ inputs.trivy-severity }}
+          ignore-unfixed: true
+
+      - name: Upload PHP SARIF file
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        continue-on-error: true
+        with:
+          sarif_file: trivy-php-results.sarif
+          category: trivy-php
+
+      - name: Push PHP image to GHCR
+        id: php-push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ inputs.workdir }}
+          file: ${{ inputs.dockerfile }}
+          target: php_prod
+          push: true
+          tags: |
+            ${{ inputs.image-name }}:${{ github.sha }}
+            ${{ inputs.image-name }}:latest
+          build-args: ${{ inputs.build-args }}
+
+      - name: Prepare PHP image reference
+        id: php-image
+        run: |
+          digest="${{ steps.php-push.outputs.digest }}"
+          image_ref="${{ inputs.image-name }}@${digest}"
+          echo "image_ref=${image_ref}" >> "$GITHUB_OUTPUT"
+
+      # Build nginx image
+      - name: Build nginx image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ inputs.workdir }}
+          file: ${{ inputs.dockerfile }}
+          target: nginx_prod
+          push: false
+          load: true
+          tags: scan-target-nginx:${{ github.sha }}
+
+      - name: Run Trivy on nginx image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: scan-target-nginx:${{ github.sha }}
+          format: table
+          exit-code: ${{ inputs.trivy-exit-code }}
+          severity: ${{ inputs.trivy-severity }}
+          ignore-unfixed: true
+
+      - name: Push nginx image to GHCR
+        id: nginx-push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ inputs.workdir }}
+          file: ${{ inputs.dockerfile }}
+          target: nginx_prod
+          push: true
+          tags: |
+            ${{ inputs.image-name }}:nginx-${{ github.sha }}
+            ${{ inputs.image-name }}:nginx-latest
+          build-args: ${{ inputs.build-args }}
+
+      - name: Prepare nginx image reference
+        id: nginx-image
+        run: |
+          digest="${{ steps.nginx-push.outputs.digest }}"
+          image_ref="${{ inputs.image-name }}@${digest}"
+          echo "image_ref=${image_ref}" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-scan-push
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - name: Configure SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "${{ inputs.ssh-port }}" "${{ vars.SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Upload compose file
+        run: |
+          ssh -p "${{ inputs.ssh-port }}" "${{ inputs.ssh-user }}@${{ vars.SSH_HOST }}" \
+            "mkdir -p '${{ inputs.remote-path }}'"
+          scp -P "${{ inputs.ssh-port }}" \
+            "${{ inputs.compose-file }}" \
+            "${{ inputs.ssh-user }}@${{ vars.SSH_HOST }}:${{ inputs.remote-path }}/docker-compose.yml"
+
+      - name: Deploy services over SSH
+        run: |
+          ssh -p "${{ inputs.ssh-port }}" "${{ inputs.ssh-user }}@${{ vars.SSH_HOST }}" <<'EOF'
+          set -euo pipefail
+          cd "${{ inputs.remote-path }}"
+
+          # Create override file with pinned image digests
+          cat > .deploy-override.yml <<OVERRIDE
+          services:
+            ${{ inputs.service-name }}:
+              image: ${{ needs.build-scan-push.outputs.php-image-ref }}
+            ${{ inputs.nginx-service-name }}:
+              image: ${{ needs.build-scan-push.outputs.nginx-image-ref }}
+            ${{ inputs.worker-service }}:
+              image: ${{ needs.build-scan-push.outputs.php-image-ref }}
+          OVERRIDE
+
+          # Pull and deploy
+          docker compose -f docker-compose.yml -f .deploy-override.yml pull
+          docker compose -f docker-compose.yml -f .deploy-override.yml up -d
+
+          # Cleanup override
+          rm -f .deploy-override.yml
+          EOF
+
+      - name: Run database migrations
+        if: ${{ inputs.run-migrations }}
+        run: |
+          ssh -p "${{ inputs.ssh-port }}" "${{ inputs.ssh-user }}@${{ vars.SSH_HOST }}" <<'EOF'
+          set -euo pipefail
+          cd "${{ inputs.remote-path }}"
+
+          # Wait for PHP container to be ready
+          sleep 5
+
+          # Run migrations
+          docker compose exec -T ${{ inputs.service-name }} \
+            php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+          EOF
+
+      - name: Restart worker service
+        if: ${{ inputs.restart-worker }}
+        run: |
+          ssh -p "${{ inputs.ssh-port }}" "${{ inputs.ssh-user }}@${{ vars.SSH_HOST }}" <<'EOF'
+          set -euo pipefail
+          cd "${{ inputs.remote-path }}"
+          docker compose restart ${{ inputs.worker-service }}
+          EOF
+
+      - name: Health check
+        run: |
+          timeout=180
+          interval=5
+          deadline=$(( $(date +%s) + timeout ))
+
+          # Resolve the host port from the running container
+          mapped=$(ssh -p "${{ inputs.ssh-port }}" "${{ inputs.ssh-user }}@${{ vars.SSH_HOST }}" \
+            "cd '${{ inputs.remote-path }}' && docker compose port '${{ inputs.nginx-service-name }}' ${{ inputs.port }}")
+          host_port=$(echo "$mapped" | cut -d: -f2)
+          echo "Container mapped to localhost:${host_port}"
+
+          while [[ $(date +%s) -lt $deadline ]]; do
+            if ssh -p "${{ inputs.ssh-port }}" "${{ inputs.ssh-user }}@${{ vars.SSH_HOST }}" \
+              "curl -fsS http://localhost:${host_port}/health" >/dev/null 2>&1; then
+              echo "Health check passed on localhost:${host_port}/health"
+              exit 0
+            fi
+            sleep "$interval"
+          done
+
+          echo "Health check failed on localhost:${host_port}/health" >&2
+          exit 1
