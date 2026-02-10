@@ -5,7 +5,7 @@ on:
     secrets:
       SSH_PRIVATE_KEY:
         description: SSH private key for deployment host authentication
-        required: true
+        required: false
     inputs:
       service-name:
         description: Docker Compose PHP service name on target host
