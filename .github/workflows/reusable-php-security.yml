@@ -1,0 +1,60 @@
+name: Reusable PHP Security
+
+on:
+  workflow_call:
+    inputs:
+      php-version:
+        description: PHP version to use
+        required: false
+        default: "8.4"
+        type: string
+      workdir:
+        description: "Working directory"
+        required: false
+        default: "."
+        type: string
+      fail-on-vulnerabilities:
+        description: "Fail if vulnerabilities are found"
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  security:
+    name: PHP Security Check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.workdir }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@c541c155eee45413f5b09a52248675b1a2575231
+        with:
+          php-version: ${{ inputs.php-version }}
+          tools: composer:v2
+          coverage: none
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Check for vulnerabilities
+        run: |
+          if [ "${{ inputs.fail-on-vulnerabilities }}" == "true" ]; then
+            composer audit
+          else
+            composer audit || true
+          fi

@@ -1,0 +1,60 @@
+# Template: PHP CI Workflow
+#
+# Copy this file to your repository as .github/workflows/ci.yml
+# Customize the inputs as needed for your project.
+#
+# Requirements:
+# - PHP project with composer.json and composer.lock
+# - PHPUnit configured (phpunit.xml.dist or phpunit.dist.xml)
+# - PHPStan configured (phpstan.neon or phpstan.neon.dist)
+# - PHP-CS-Fixer or ECS configured (.php-cs-fixer.dist.php or ecs.php)
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint & Static Analysis
+    uses: marcel-tuinstra/devops/.github/workflows/reusable-php-lint.yml@v1
+    with:
+      php-version: "8.4"
+      phpstan-level: "8"
+      lint-tool: "php-cs-fixer"
+      # Uncomment for ECS-based projects:
+      # lint-tool: "ecs"
+      # run-rector: true
+
+  test:
+    name: Tests
+    uses: marcel-tuinstra/devops/.github/workflows/reusable-php-test.yml@v1
+    with:
+      php-version: "8.4"
+      database: "postgres"
+      postgres-version: "16"
+      coverage: true
+      diff-coverage-threshold: "70"
+      # Uncomment to run specific test suites:
+      # test-suites: "Unit, Integration, Functional"
+
+  security:
+    name: Security Check
+    uses: marcel-tuinstra/devops/.github/workflows/reusable-php-security.yml@v1
+    with:
+      php-version: "8.4"
+
+  # Optional: Docker image security scanning
+  # Uncomment if your project has a Dockerfile
+  # docker:
+  #   name: Docker Build & Scan
+  #   uses: marcel-tuinstra/devops/.github/workflows/reusable-ci-docker.yml@v1
+  #   with:
+  #     trivy-severity: "CRITICAL,HIGH"
+  #     trivy-exit-code: "1"
